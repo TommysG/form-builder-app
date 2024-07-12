@@ -108,33 +108,7 @@ function FormComponent({
   const { label, required, placeHolder, helperText } = element.extraAttributes;
   return (
     <div className="flex flex-col gap-2 w-full">
-      <Label className={cn(error && "text-red-500")}>
-        {label}
-        {required && "*"}
-      </Label>
-      <Input
-        className={cn(error && "border-red-500")}
-        placeholder={placeHolder}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={(e) => {
-          if (!submitValue) return;
-          const valid = LabelWidget.validate(element, e.target.value);
-          setError(!valid);
-          if (!valid) return;
-          submitValue(element.id, e.target.value);
-        }}
-        value={value}
-      />
-      {helperText && (
-        <p
-          className={cn(
-            "text-muted-foreground text-[0.8rem]",
-            error && "text-red-500"
-          )}
-        >
-          {helperText}
-        </p>
-      )}
+      <Label>{label}</Label>
     </div>
   );
 }

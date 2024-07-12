@@ -2,72 +2,79 @@
 
 import Designer from "../Designer";
 import BuilderSidebar from "./BuilderSiderbar";
-import { DragDropContext, DragUpdate, DropResult } from "@hello-pangea/dnd";
 import useBuilder from "@/hooks/useBuilder";
-import { FormWidgets, WidgetsType } from "../FormWidgets";
-import { idGenerator } from "@/lib/idGenerator";
-import BuilderContextProvider from "@/context/BuilderContext";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useTransition } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  MeasuringStrategy,
+  MouseSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import DragOverlayWrapper from "../DragOverlay";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import Announcements from "../DndAnnouncements";
+import { FormWidgetInstance } from "../FormWidgets";
+import { IForm, IFormField } from "@/services/form.types";
+import { Button } from "../ui/button";
+import { HiSaveAs } from "react-icons/hi";
+import { useUpdateForm } from "@/features/forms/mutation";
+import { useToast } from "../ui/use-toast";
+import { FaSpinner } from "react-icons/fa";
+import PublishForm from "../modals/PublishForm";
 
-const isMoving = (result: DropResult) => {
-  const { source, destination } = result;
+function Builder({ form }: { form: IForm }) {
+  const { elements } = useBuilder();
+  const updateForm = useUpdateForm();
+  const { toast } = useToast();
+  const id = useId();
+  const [isPending, startTransition] = useTransition();
 
-  if (!destination) {
-    return false;
-  }
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10, // 10px
+    },
+  });
 
-  return (
-    source.droppableId === "designer" && destination.droppableId === "designer"
-  );
-};
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 300,
+      tolerance: 5,
+    },
+  });
 
-const isCopying = (result: DropResult) => {
-  const { source, destination } = result;
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
 
-  if (!destination) {
-    return false;
-  }
+  const sensors = useSensors(mouseSensor, touchSensor, keyboardSensor);
 
-  return (
-    source.droppableId.includes("widget") &&
-    destination.droppableId === "designer"
-  );
-};
-
-export type Form = {
-  id: number;
-  name: string;
-};
-
-const queryAttr = "data-rbd-drag-handle-draggable-id";
-
-function Builder({ form }: { form: Form }) {
-  const { elements, addElement, reorder } = useBuilder();
-  const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
-
-    if (!destination) {
-      return;
-    }
-
-    // adding widgets to builder
-    if (isCopying(result)) {
-      const type = source.droppableId.split("-")[1];
-      const newElement = FormWidgets[type as WidgetsType].construct(
-        idGenerator()
-      );
-      addElement(destination.index, newElement);
-    } else if (isMoving(result)) {
-      reorder(source.index, destination.index);
+  const updateFormContent = async () => {
+    try {
+      updateForm.mutate({
+        id: form.id,
+        fields: elements as IFormField[],
+      });
+      toast({
+        title: "Success",
+        description: "Your form has been saved",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
 
-  useEffect(() => {
-    console.log("WIDGETS: ", elements);
-  }, [elements]);
-
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DndContext id={id} sensors={sensors}>
+      {/* <Announcements /> */}
       <main className="flex flex-col w-full">
         <nav className="flex justify-between border-b-2 p-4 gap-3 items-center">
           <h2 className="truncate font-medium">
@@ -75,13 +82,19 @@ function Builder({ form }: { form: Form }) {
             {form.name}
           </h2>
           <div className="flex items-center gap-2">
-            {/* <PreviewDialogBtn /> */}
-            {/* {!form.published && (
-              <>
-                <SaveFormBtn id={form.id} />
-                <PublishFormBtn id={form.id} />
-              </>
-            )} */}
+            <Button
+              variant={"outline"}
+              className="gap-2"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(updateFormContent);
+              }}
+            >
+              <HiSaveAs className="h-4 w-4" />
+              Save
+              {isPending && <FaSpinner className="animate-spin" />}
+            </Button>
+            <PublishForm id={form.id} />
           </div>
         </nav>
         <div className="flex w-full flex-grow items-center justify-center relative overflow-y-auto h-[200px] bg-accent bg-[url(/paper.svg)] dark:bg-[url(/paper-dark.svg)]">
@@ -89,7 +102,8 @@ function Builder({ form }: { form: Form }) {
           <BuilderSidebar />
         </div>
       </main>
-    </DragDropContext>
+      <DragOverlayWrapper />
+    </DndContext>
   );
 }
 

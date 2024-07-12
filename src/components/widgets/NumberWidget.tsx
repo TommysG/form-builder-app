@@ -134,6 +134,7 @@ function FormComponent({
         className={cn(error && "border-red-500")}
         placeholder={placeHolder}
         onChange={(e) => setValue(e.target.value)}
+        type="number"
         onBlur={(e) => {
           if (!submitValue) return;
           const valid = NumberWidget.validate(element, e.target.value);

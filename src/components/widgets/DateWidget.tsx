@@ -28,6 +28,9 @@ import useBuilder from "@/hooks/useBuilder";
 import { BsFillCalendarDateFill } from "react-icons/bs";
 import { Button } from "../ui/button";
 import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar } from "../ui/calendar";
+import { format, parse, parseISO } from "date-fns";
 
 const type: WidgetsType = "Date";
 
@@ -96,7 +99,7 @@ function BuilderComponent({
         className="w-full justify-start text-left font-normal pointer-events-none"
       >
         <CalendarIcon className="mr-2 h-4 w-4" />
-        <span>Pick a date</span>
+        <span className="text-muted-foreground">{placeHolder}</span>
       </Button>
       {helperText && (
         <p className="text-muted-foreground text-[0.8rem]">{helperText}</p>
@@ -117,34 +120,60 @@ function FormComponent({
   defaultValue?: string;
 }) {
   const element = elementInstance as CustomInstance;
+  const { label, required, placeHolder, helperText } = element.extraAttributes;
 
-  const [value, setValue] = useState(defaultValue || "");
+  const defaultDate = defaultValue
+    ? parse(defaultValue, "dd-MM-yyyy", new Date())
+    : undefined;
+
+  const [date, setDate] = useState<Date | undefined>(defaultDate);
+
   const [error, setError] = useState(false);
 
   useEffect(() => {
     setError(isInvalid === true);
   }, [isInvalid]);
 
-  const { label, required, placeHolder, helperText } = element.extraAttributes;
+  const onSelectDate = (date: Date | undefined) => {
+    setDate(date);
+
+    if (!submitValue) return;
+
+    const value = date ? format(date, "dd-MM-yyyy") : "";
+    const valid = DateWidget.validate(element, value);
+    setError(!valid);
+    submitValue(element.id, value);
+  };
+
   return (
     <div className="flex flex-col gap-2 w-full">
       <Label className={cn(error && "text-red-500")}>
         {label}
         {required && "*"}
       </Label>
-      <Input
-        className={cn(error && "border-red-500")}
-        placeholder={placeHolder}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={(e) => {
-          if (!submitValue) return;
-          const valid = DateWidget.validate(element, e.target.value);
-          setError(!valid);
-          if (!valid) return;
-          submitValue(element.id, e.target.value);
-        }}
-        value={value}
-      />
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant={"outline"}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground",
+              error && "border-red-500"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date ? format(date, "PPP") : <span>Pick a date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={onSelectDate}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
       {helperText && (
         <p
           className={cn(

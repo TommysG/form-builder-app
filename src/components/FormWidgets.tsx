@@ -5,6 +5,7 @@ import { NumberWidget } from "./widgets/NumberWidget";
 import { TextWidget } from "./widgets/TextWidget";
 
 export type WidgetsType = "Checkbox" | "Date" | "Label" | "Text" | "Number";
+
 export type SubmitFunction = (key: string, value: string) => void;
 
 export type FormWidgetInstance = {

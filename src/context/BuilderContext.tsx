@@ -14,6 +14,7 @@ type BuilderContextType = {
   setElements: Dispatch<SetStateAction<FormWidgetInstance[]>>;
   addElement: (index: number, element: FormWidgetInstance) => void;
   removeElement: (id: string) => void;
+  removeElementByIndex: (index: number) => void;
 
   selectedElement: FormWidgetInstance | null;
   setSelectedElement: Dispatch<SetStateAction<FormWidgetInstance | null>>;
@@ -46,6 +47,14 @@ export default function BuilderContextProvider({
     setElements((prev) => prev.filter((element) => element.id !== id));
   };
 
+  const removeElementByIndex = (index: number) => {
+    setElements((prev) => {
+      const newElements = [...prev];
+      newElements.splice(index, 1);
+      return newElements;
+    });
+  };
+
   const updateElement = (id: string, element: FormWidgetInstance) => {
     setElements((prev) => {
       const newElements = [...prev];
@@ -73,7 +82,9 @@ export default function BuilderContextProvider({
         elements,
         setElements,
         addElement,
+
         removeElement,
+        removeElementByIndex,
 
         selectedElement,
         setSelectedElement,
